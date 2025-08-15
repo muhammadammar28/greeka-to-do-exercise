@@ -8,8 +8,6 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus } from './enums/task-status.enum';
 import { TaskPriority } from './enums/task-priority.enum';
 import { NotFoundException } from '@nestjs/common';
-import { PaginationDto } from './dto/pagination.dto';
-import { TaskFilterDto } from './dto/task-filter.dto';
 
 describe('TasksService', () => {
   let service: TasksService;
@@ -86,8 +84,8 @@ describe('TasksService', () => {
 
   describe('findAll', () => {
     it('should return paginated tasks', async () => {
-      const paginationDto: PaginationDto = { page: 1, limit: 10 };
-      const filterDto: TaskFilterDto = {};
+      const paginationDto = { page: 1, limit: 10 };
+      const filterDto = {};
       const tasks = [mockTask];
       const total = 1;
 
@@ -103,8 +101,8 @@ describe('TasksService', () => {
     });
 
     it('should filter tasks by status', async () => {
-      const paginationDto: PaginationDto = { page: 1, limit: 10 };
-      const filterDto: TaskFilterDto = { status: TaskStatus.DONE };
+      const paginationDto = { page: 1, limit: 10 };
+      const filterDto = { status: TaskStatus.DONE };
       const tasks = [{ ...mockTask, status: TaskStatus.DONE }];
 
       mockRepository.findAndCount.mockResolvedValue([tasks, 1]);
@@ -120,8 +118,8 @@ describe('TasksService', () => {
     });
 
     it('should search tasks by name', async () => {
-      const paginationDto: PaginationDto = { page: 1, limit: 10 };
-      const filterDto: TaskFilterDto = { search: 'Test' };
+      const paginationDto = { page: 1, limit: 10 };
+      const filterDto = { search: 'Test' };
       const tasks = [mockTask];
 
       mockRepository.findAndCount.mockResolvedValue([tasks, 1]);
@@ -134,6 +132,41 @@ describe('TasksService', () => {
           where: expect.objectContaining({
             name: expect.objectContaining({ _type: 'like' }),
           }),
+        }),
+      );
+    });
+
+    it('should filter tasks by isActive false', async () => {
+      const paginationDto = { page: 1, limit: 10 };
+      const filterDto = { isActive: false };
+      const tasks = [];
+
+      mockRepository.findAndCount.mockResolvedValue([tasks, 0]);
+
+      const result = await service.findAll(paginationDto, filterDto);
+
+      expect(result.data).toEqual([]);
+      expect(result.meta.totalItems).toEqual(0);
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isActive: false }),
+        }),
+      );
+    });
+
+    it('should filter tasks by isActive true', async () => {
+      const paginationDto = { page: 1, limit: 10 };
+      const filterDto = { isActive: true };
+      const tasks = [mockTask];
+
+      mockRepository.findAndCount.mockResolvedValue([tasks, 1]);
+
+      const result = await service.findAll(paginationDto, filterDto);
+
+      expect(result.data).toEqual(tasks);
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isActive: true }),
         }),
       );
     });

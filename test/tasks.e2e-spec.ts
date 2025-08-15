@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+const request = require('supertest');
 import { AppModule } from '../src/app.module';
 import { TaskStatus } from '../src/tasks/enums/task-status.enum';
 import { TaskPriority } from '../src/tasks/enums/task-priority.enum';
@@ -84,6 +84,20 @@ describe('TasksController (e2e)', () => {
           expect(res.body.success).toBe(false);
         });
     });
+
+    it('should fail to create task with invalid date format', () => {
+      return request(app.getHttpServer())
+        .post('/api/tasks')
+        .send({
+          name: 'Invalid Date Task',
+          dueDate: 'not-a-date',
+        })
+        .expect(400)
+        .expect((res) => {
+          expect(res.body.success).toBe(false);
+          expect(res.body.message).toBeDefined();
+        });
+    });
   });
 
   describe('/api/tasks (GET)', () => {
@@ -136,6 +150,52 @@ describe('TasksController (e2e)', () => {
         .expect((res) => {
           expect(res.body.success).toBe(true);
           expect(res.body.data).toHaveProperty('data');
+        });
+    });
+
+    it('should filter tasks by isActive true', () => {
+      return request(app.getHttpServer())
+        .get('/api/tasks')
+        .query({ isActive: 'true' })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.success).toBe(true);
+          expect(res.body.data).toHaveProperty('data');
+          const tasks = res.body.data.data;
+          tasks.forEach((task: any) => {
+            expect(task.isActive).toBe(true);
+          });
+        });
+    });
+
+    it('should filter tasks by isActive false and return empty array', () => {
+      return request(app.getHttpServer())
+        .get('/api/tasks')
+        .query({ isActive: 'false' })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.success).toBe(true);
+          expect(res.body.data).toHaveProperty('data');
+          expect(res.body.data.data).toEqual([]);
+          expect(res.body.data.meta.totalItems).toBe(0);
+        });
+    });
+
+    it('should handle combined filters', () => {
+      return request(app.getHttpServer())
+        .get('/api/tasks')
+        .query({ 
+          status: TaskStatus.PENDING,
+          priority: TaskPriority.HIGH,
+          isActive: 'true',
+          page: '1',
+          limit: '5'
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.success).toBe(true);
+          expect(res.body.data).toHaveProperty('data');
+          expect(res.body.data.meta.itemsPerPage).toBe(5);
         });
     });
   });

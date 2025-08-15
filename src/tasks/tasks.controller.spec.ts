@@ -5,8 +5,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus } from './enums/task-status.enum';
 import { TaskPriority } from './enums/task-priority.enum';
-import { PaginationDto } from './dto/pagination.dto';
-import { TaskFilterDto } from './dto/task-filter.dto';
+import { TaskQueryDto } from './dto/task-query.dto';
 import { Task } from './entities/task.entity';
 import { PaginatedResponseDto } from './dto/paginated-response.dto';
 
@@ -94,30 +93,64 @@ describe('TasksController', () => {
 
   describe('findAll', () => {
     it('should return paginated tasks', async () => {
-      const paginationDto: PaginationDto = { page: 1, limit: 10 };
-      const filterDto: TaskFilterDto = {};
+      const query: TaskQueryDto = { page: 1, limit: 10 };
 
       mockTasksService.findAll.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll(paginationDto, filterDto);
+      const result = await controller.findAll(query);
 
       expect(result).toEqual(mockPaginatedResponse);
-      expect(service.findAll).toHaveBeenCalledWith(paginationDto, filterDto);
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        {}
+      );
     });
 
     it('should apply filters when fetching tasks', async () => {
-      const paginationDto: PaginationDto = { page: 1, limit: 10 };
-      const filterDto: TaskFilterDto = {
+      const query: TaskQueryDto = {
+        page: 1,
+        limit: 10,
         status: TaskStatus.DONE,
         priority: TaskPriority.HIGH,
+        isActive: true,
       };
 
       mockTasksService.findAll.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll(paginationDto, filterDto);
+      const result = await controller.findAll(query);
 
       expect(result).toEqual(mockPaginatedResponse);
-      expect(service.findAll).toHaveBeenCalledWith(paginationDto, filterDto);
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        { status: TaskStatus.DONE, priority: TaskPriority.HIGH, isActive: true }
+      );
+    });
+
+    it('should filter by isActive false', async () => {
+      const query: TaskQueryDto = {
+        page: 1,
+        limit: 10,
+        isActive: false,
+      };
+
+      mockTasksService.findAll.mockResolvedValue(
+        new PaginatedResponseDto([], {
+          currentPage: 1,
+          itemsPerPage: 10,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        })
+      );
+
+      const result = await controller.findAll(query);
+
+      expect(result.data).toEqual([]);
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        { isActive: false }
+      );
     });
   });
 
